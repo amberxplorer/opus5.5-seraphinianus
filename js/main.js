@@ -12,7 +12,11 @@
 
   let show = null;
   let W = 1, H = 1, dpr = 1;
-  let maxDpr = Math.min(2, window.devicePixelRatio || 1);
+  // the screen's own density (for the page textures) and the density we actually draw at,
+  // which steps down if frames keep arriving late
+  const baseDpr = () => Math.min(2, window.devicePixelRatio || 1);
+  let maxDpr = baseDpr();
+  const PIXEL_BUDGET = 4.2e6; // backing pixels; beyond this the pages have no more detail to show
 
   // ------------------------------------------------------------ clock
   const clock = {
@@ -35,17 +39,21 @@
   function resize() {
     W = Math.max(1, window.innerWidth);
     H = Math.max(1, window.innerHeight);
-    dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
+    dpr = Math.min(window.devicePixelRatio || 1, maxDpr, Math.sqrt(PIXEL_BUDGET / (W * H)));
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
     canvas.style.width = W + 'px';
     canvas.style.height = H + 'px';
   }
+  // Page texture width. It follows the window, not the adaptive density, and ignores small
+  // changes, because a new size means repainting every page.
+  let wpx = 0;
   function pageRes() {
     const narrow = W / H < 0.95;
     const z = narrow ? Math.min(W / 1100, H / 1600) : Math.min(W / 2320, H / 1680);
-    const px = 1000 * z * dpr * 1.4;
-    return Math.round(U.clamp(px, 560, 1700) / 8) * 8;
+    const px = Math.round(U.clamp(1000 * z * baseDpr() * 1.4, 560, 1700) / 8) * 8;
+    if (!wpx || Math.abs(px - wpx) / wpx > 0.2) wpx = px;
+    return wpx;
   }
 
   // ------------------------------------------------------------ render
@@ -105,15 +113,15 @@
       clock.base = show.duration;
       if (C.UI) C.UI.ended();
     }
-    // adaptive resolution: if frames keep arriving late, lower the pixel ratio a notch
+    // adaptive resolution: if frames keep arriving late, draw the screen a notch coarser
     const now = performance.now();
     const dt = now - lastWall;
     lastWall = now;
-    if (clock.playing) {
+    if (clock.playing && !document.hidden && dt < 250) {
       frames++;
-      if (dt > 34) slow++;
-      if (frames >= 90) {
-        if (slow > 35 && maxDpr > 1) { maxDpr = Math.max(1, maxDpr - 0.5); resize(); }
+      if (dt > 24) slow++;
+      if (frames >= 60) {
+        if (slow > 24 && dpr > 0.8) { maxDpr = Math.max(0.8, dpr - 0.25); resize(); }
         frames = 0;
         slow = 0;
       }

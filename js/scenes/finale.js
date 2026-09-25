@@ -73,6 +73,7 @@
         return targets;
       };
       show.titleTargets = makeTargets;
+      let glowLayer = null, glowCtx = null, titleImg = null, titleKey = '';
       const drawWord = (ctx, f, amp, T) => {
         ctx.beginPath();
         for (const arr of f.pts) {
@@ -91,6 +92,18 @@
           const tg = T > gather[0] - 0.1 ? makeTargets(W, H) : null;
           ctx.lineCap = 'round';
           ctx.lineJoin = 'round';
+          // the lamplit glow around words in the air: thick strokes on a quarter-size layer,
+          // laid over the frame once, soft from being enlarged
+          const GS = 0.25;
+          const gw = Math.max(8, Math.ceil(W * dpr * GS)), gh = Math.max(8, Math.ceil(H * dpr * GS));
+          if (!glowLayer) { glowLayer = U.canvas(gw, gh); glowCtx = glowLayer.getContext('2d'); }
+          if (glowLayer.width !== gw || glowLayer.height !== gh) { glowLayer.width = gw; glowLayer.height = gh; }
+          const gc = glowCtx;
+          gc.setTransform(1, 0, 0, 1, 0, 0);
+          gc.clearRect(0, 0, gw, gh);
+          gc.lineCap = 'round';
+          gc.lineJoin = 'round';
+          let glowing = false;
           for (const f of flock) {
             if (T < f.s) continue;
             const v = vortex(f, T);
@@ -106,9 +119,19 @@
               const glow = U.smoothstep(f.s + 0.5, f.s + 2.0, T);
               ctx.strokeStyle = glow > 0 ? U.rgba(U.mixc(PAL.ink, [252, 226, 170], glow), 0.95) : U.rgba(PAL.ink, 0.95);
               ctx.lineWidth = f.wd * (1 + glow * 0.4);
-              if (glow > 0.3) { ctx.shadowColor = `rgba(255,200,120,${(0.5 * glow).toFixed(2)})`; ctx.shadowBlur = 6 * view.dpr; }
               drawWord(ctx, f, 2 * a, T);
               ctx.restore();
+              if (glow > 0.3) {
+                view.apply(gc, GS);
+                gc.save();
+                view.lift(gc, v.x, v.y, v.z);
+                gc.rotate(v.rot);
+                gc.strokeStyle = `rgba(255,196,110,${(0.16 * glow).toFixed(2)})`;
+                gc.lineWidth = f.wd * 1.2 + 1.6 / Math.max(0.05, view.pxPerUnit * GS);
+                drawWord(gc, f, 2 * a, T);
+                gc.restore();
+                glowing = true;
+              }
               continue;
             }
             // gathering: fly in screen space toward a point of the title
@@ -124,24 +147,48 @@
             ctx.lineWidth = f.wd / Math.max(0.2, sc) * 0.9 * (1 - q) + f.wd * q * 2;
             drawWord(ctx, f, 1.5 * (1 - q), T);
           }
+          if (glowing) {
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.imageSmoothingEnabled = true;
+            ctx.drawImage(glowLayer, 0, 0, gw, gh, 0, 0, gw / GS, gh / GS);
+            ctx.globalCompositeOperation = 'source-over';
+          }
           // the title itself, in type, as the writing settles into it
           if (tg) {
             const k = U.smoothstep(gather[1] - 0.45, gather[1] + 0.5, T);
             if (k > 0) {
-              ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.font = `italic 400 ${tg.fs}px "Bodoni Moda", "Didot", "Bodoni 72", Georgia, serif`;
-              ctx.shadowColor = `rgba(255,214,150,${0.55 * k})`;
-              ctx.shadowBlur = 24 * dpr;
-              ctx.fillStyle = `rgba(247,234,204,${k})`;
-              ctx.fillText(C.TITLE, W / 2, tg.y);
-              ctx.shadowBlur = 0;
-              ctx.shadowColor = 'transparent';
+              const img = titleImage(tg, dpr);
+              ctx.setTransform(1, 0, 0, 1, 0, 0);
+              ctx.globalAlpha = k;
+              ctx.drawImage(img, Math.round(W * dpr / 2 - img.width / 2), Math.round(tg.y * dpr - img.height / 2));
+              ctx.globalAlpha = 1;
             }
           }
         },
       });
+      // the glowing title, set once per size: the blur is paid for a single time
+      const titleImage = (tg, dpr) => {
+        const key = tg.fs + ':' + dpr + ':' + (document.fonts && document.fonts.status);
+        if (titleImg && titleKey === key) return titleImg;
+        const fs = tg.fs * dpr, pad = Math.ceil(40 * dpr);
+        const font = `italic 400 ${fs}px "Bodoni Moda", "Didot", "Bodoni 72", Georgia, serif`;
+        const m = U.canvas(8, 8).getContext('2d');
+        m.font = font;
+        const tw = Math.ceil(m.measureText(C.TITLE).width);
+        const c = U.canvas(tw + pad * 2, Math.ceil(fs * 1.5) + pad * 2);
+        const g = c.getContext('2d');
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.font = font;
+        g.shadowColor = 'rgba(255,214,150,0.55)';
+        g.shadowBlur = 24 * dpr;
+        g.fillStyle = 'rgb(247,234,204)';
+        g.fillText(C.TITLE, c.width / 2, c.height / 2);
+        titleImg = c;
+        titleKey = key;
+        return c;
+      };
 
       // a last gleam across the gilt of the closed cover
       show.actor({

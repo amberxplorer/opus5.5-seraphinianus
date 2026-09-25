@@ -57,6 +57,11 @@
     }
     caption(t0, t1, title, text) { this.captions.push({ t0, t1, title, text }); }
     cue(t, type, data) { this.cues.push(Object.assign({ t, type }, data || {})); }
+    // marks drawn by actors rather than pages: their watercolour is prepared ahead of time t too
+    warm(t, marks) {
+      this.warmList = this.warmList || [];
+      for (const m of marks) if (m && m.prepare) this.warmList.push({ t, m });
+    }
 
     // ---------------------------------------------------------- state
     state(T) {
@@ -111,7 +116,11 @@
         if (vis.indexOf(page) >= 0) continue;
         let s = this.surfaces.get(page);
         if (!s) { s = new B.Surface(page, wpx); this.surfaces.set(page, s); }
-        s.bake(T, 5);
+        s.bake(T, 3);
+      }
+      // the leaves for riffles, one per frame, well before the first one
+      if ((!this._fill || this._fill.length < 8 || this._fillW !== Math.min(wpx, 720)) && this.turns.some((tr) => tr.sheets && tr.t1 > T && tr.t0 - T < 12)) {
+        this.warmFillers(wpx, 0);
       }
       // prepare watercolour textures a few seconds before they are needed
       const start = performance.now();
@@ -121,6 +130,11 @@
           m.prepare(wpx / PW);
           if (performance.now() - start > 4) return;
         }
+      }
+      for (const w of this.warmList || []) {
+        if (w.m.tex || w.t > T + 3.5 || w.t < T - 2) continue;
+        w.m.prepare(wpx / PW);
+        if (performance.now() - start > 4) return;
       }
     }
 
@@ -160,57 +174,69 @@
 
     // ---------------------------------------------------------- rendering
     // Leaves that flick past during a riffle: paper, a running head, text and a small figure.
+    // They are only glimpsed, so they are built a leaf at a time ahead of the first riffle and
+    // their text is drawn in a single pass.
     fillers(wpx) {
-      if (this._fill && this._fillW === wpx) return this._fill;
-      const A = C.Asemic, Ink = C.Ink, D = C.Draw, PAL = Ink.PAL;
-      const w = Math.min(wpx, 720), h = Math.round(w * 1.414), sc = w / PW;
-      const out = [];
-      for (let k = 0; k < 8; k++) {
-        const c = U.canvas(w, h);
-        const g = c.getContext('2d');
-        const paper = B.paperFor(k % 3, wpx);
-        g.drawImage(paper, 0, 0, w, h);
-        g.setTransform(sc, 0, 0, sc, 0, 0);
-        const env = { texScale: sc, paper };
-        const r = new U.Rand('leaf' + k);
-        const draw = (m) => { g.save(); m.draw(g, 1, env); g.restore(); };
-        for (const st of A.label(500, 78, 6.2, 2, { center: true, rand: r }).strokes) st.draw(g, 1);
-        for (const st of A.numeral(200 + k * 7, k % 2 ? 910 : 90, 1356, 8.5, { center: true })) st.draw(g, 1);
-        const kind = k % 4;
-        const fy = kind === 0 ? 180 : 700;
-        // a figure: a plant, a diagram, a creature or a map
-        const cx = 500, cy = fy + 230;
-        if (kind === 0 || kind === 2) {
-          const stem = D.stem(cx, cy + 190, -Math.PI / 2, 360, r.range(-0.5, 0.5), r);
-          Ink.path(stem, { raw: true, w: 1.6 }).draw(g, 1);
-          for (let i = 0; i < 6; i++) {
-            const p = stem[Math.floor(stem.length * (0.25 + i * 0.12))];
-            const lf = D.leaf(p[0], p[1], -Math.PI / 2 + (i % 2 ? 1 : -1) * r.range(0.6, 1.1), r.range(60, 90), r.range(18, 24));
-            draw(Ink.wash(lf.outline, i % 3 ? PAL.leaf : PAL.moss, 0, 1, { alpha: 0.5, amp: 2, seed: k * 10 + i }));
-            Ink.path(lf.outline, { raw: true, w: 1 }).draw(g, 1);
-          }
-          const top = stem[stem.length - 1];
-          draw(Ink.wash(U.circle(top[0], top[1], 34, 20), kind ? PAL.rose : PAL.saffron, 0, 1, { alpha: 0.55, amp: 3, seed: k }));
-          Ink.path(U.circle(top[0], top[1], 34, 30).concat([[top[0] + 34, top[1]]]), { w: 1.2 }).draw(g, 1);
-        } else if (kind === 1) {
-          for (let i = 0; i < 4; i++) Ink.path(U.circle(cx, cy, 60 + i * 50, 60).concat([[cx + 60 + i * 50, cy]]), { w: 0.9 + (i === 3 ? 0.5 : 0) }).draw(g, 1);
-          for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; Ink.line(cx, cy, cx + Math.cos(a) * 210, cy + Math.sin(a) * 210, { w: 0.6 }).draw(g, 1); }
-          draw(Ink.wash(U.circle(cx, cy, 58, 30), PAL.sky, 0, 1, { alpha: 0.5, amp: 3, seed: k }));
-          draw(Ink.wash(U.circle(cx + 150, cy - 40, 22, 20), PAL.carmine, 0, 1, { alpha: 0.6, amp: 2, seed: k + 1 }));
-        } else {
-          const coast = [];
-          for (let i = 0; i < 40; i++) { const a = (i / 40) * Math.PI * 2; const rr = 170 + U.noise(i * 0.3, k) * 60; coast.push([cx + Math.cos(a) * rr * 1.3, cy + Math.sin(a) * rr * 0.8]); }
-          draw(Ink.wash(coast, PAL.ochre, 0, 1, { alpha: 0.45, amp: 5, seed: k }));
-          Ink.path(coast.concat([coast[0], coast[1]]), { w: 1.2 }).draw(g, 1);
-          for (const [x, y] of [[cx - 60, cy - 20], [cx + 40, cy + 30], [cx + 110, cy - 50]]) Ink.path(U.circle(x, y, 5, 10).concat([[x + 5, y]]), { w: 1 }).draw(g, 1);
-        }
-        const tb = A.block({ rand: r, x: 96, y: kind === 0 ? 700 : 170, w: 808, size: 7.4, lines: kind === 0 ? 20 : 17 });
-        for (const m of A.printed(tb, 0)) draw(m);
-        out.push(c);
+      this.warmFillers(wpx, Infinity);
+      return this._fill;
+    }
+    warmFillers(wpx, budget) {
+      const w = Math.min(wpx, 720);
+      if (!this._fill || this._fillW !== w) { this._fill = []; this._fillW = w; }
+      const start = performance.now();
+      while (this._fill.length < 8) {
+        this._fill.push(this.fillerLeaf(this._fill.length, w, wpx));
+        if (performance.now() - start > budget) break;
       }
-      this._fill = out;
-      this._fillW = wpx;
-      return out;
+      return this._fill.length >= 8;
+    }
+    fillerLeaf(k, w, wpx) {
+      const A = C.Asemic, Ink = C.Ink, D = C.Draw, PAL = Ink.PAL;
+      const h = Math.round(w * 1.414), sc = w / PW;
+      const c = U.canvas(w, h);
+      const g = c.getContext('2d');
+      const paper = B.paperFor(k % 3, wpx);
+      g.drawImage(paper, 0, 0, w, h);
+      g.setTransform(sc, 0, 0, sc, 0, 0);
+      const env = { texScale: sc, paper };
+      const r = new U.Rand('leaf' + k);
+      const draw = (m) => { g.save(); m.draw(g, 1, env); g.restore(); };
+      for (const st of A.label(500, 78, 6.2, 2, { center: true, rand: r }).strokes) st.draw(g, 1);
+      for (const st of A.numeral(200 + k * 7, k % 2 ? 910 : 90, 1356, 8.5, { center: true })) st.draw(g, 1);
+      const kind = k % 4;
+      const fy = kind === 0 ? 180 : 700;
+      // a figure: a plant, a diagram, a creature or a map
+      const cx = 500, cy = fy + 230;
+      if (kind === 0 || kind === 2) {
+        const stem = D.stem(cx, cy + 190, -Math.PI / 2, 360, r.range(-0.5, 0.5), r);
+        Ink.path(stem, { raw: true, w: 1.6 }).draw(g, 1);
+        for (let i = 0; i < 6; i++) {
+          const p = stem[Math.floor(stem.length * (0.25 + i * 0.12))];
+          const lf = D.leaf(p[0], p[1], -Math.PI / 2 + (i % 2 ? 1 : -1) * r.range(0.6, 1.1), r.range(60, 90), r.range(18, 24));
+          draw(Ink.wash(lf.outline, i % 3 ? PAL.leaf : PAL.moss, 0, 1, { alpha: 0.5, amp: 2, seed: k * 10 + i }));
+          Ink.path(lf.outline, { raw: true, w: 1 }).draw(g, 1);
+        }
+        const top = stem[stem.length - 1];
+        draw(Ink.wash(U.circle(top[0], top[1], 34, 20), kind ? PAL.rose : PAL.saffron, 0, 1, { alpha: 0.55, amp: 3, seed: k }));
+        Ink.path(U.circle(top[0], top[1], 34, 30).concat([[top[0] + 34, top[1]]]), { w: 1.2 }).draw(g, 1);
+      } else if (kind === 1) {
+        for (let i = 0; i < 4; i++) Ink.path(U.circle(cx, cy, 60 + i * 50, 60).concat([[cx + 60 + i * 50, cy]]), { w: 0.9 + (i === 3 ? 0.5 : 0) }).draw(g, 1);
+        for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; Ink.line(cx, cy, cx + Math.cos(a) * 210, cy + Math.sin(a) * 210, { w: 0.6 }).draw(g, 1); }
+        draw(Ink.wash(U.circle(cx, cy, 58, 30), PAL.sky, 0, 1, { alpha: 0.5, amp: 3, seed: k }));
+        draw(Ink.wash(U.circle(cx + 150, cy - 40, 22, 20), PAL.carmine, 0, 1, { alpha: 0.6, amp: 2, seed: k + 1 }));
+      } else {
+        const coast = [];
+        for (let i = 0; i < 40; i++) { const a = (i / 40) * Math.PI * 2; const rr = 170 + U.noise(i * 0.3, k) * 60; coast.push([cx + Math.cos(a) * rr * 1.3, cy + Math.sin(a) * rr * 0.8]); }
+        draw(Ink.wash(coast, PAL.ochre, 0, 1, { alpha: 0.45, amp: 5, seed: k }));
+        Ink.path(coast.concat([coast[0], coast[1]]), { w: 1.2 }).draw(g, 1);
+        for (const [x, y] of [[cx - 60, cy - 20], [cx + 40, cy + 30], [cx + 110, cy - 50]]) Ink.path(U.circle(x, y, 5, 10).concat([[x + 5, y]]), { w: 1 }).draw(g, 1);
+      }
+      const tb = A.block({ rand: r, x: 96, y: kind === 0 ? 700 : 170, w: 808, size: 7.4, lines: kind === 0 ? 20 : 17 });
+      const strokes = [];
+      for (const wd of tb.words) for (const st of wd.strokes) strokes.push(st);
+      if (tb.dropcap) strokes.push(...[].concat(tb.dropcap.stroke));
+      Ink.fastStrokes(g, strokes, 1);
+      return c;
     }
 
     ensureAssets() {
@@ -236,12 +262,25 @@
     }
 
     softShadowRect(ctx, x, y, w, h, a, spread) {
-      // a soft rectangular contact shadow made of stacked translucent rects
-      for (let i = 0; i < 7; i++) {
-        const e = spread * (i / 6);
-        ctx.fillStyle = `rgba(0,0,0,${(a / 7).toFixed(3)})`;
-        ctx.fillRect(x - e + spread * 0.35, y - e + spread * 0.25, w + e * 2, h + e * 2);
+      // a soft rectangular contact shadow made of stacked translucent rects, painted once at
+      // low resolution and stretched (the stretching only softens it further)
+      const key = [w, h, a, spread].join(':');
+      this._shadows = this._shadows || new Map();
+      let c = this._shadows.get(key);
+      const k = 0.08, pad = spread * 1.2;
+      if (!c) {
+        c = U.canvas(Math.ceil((w + pad * 2) * k), Math.ceil((h + pad * 2) * k));
+        const g = c.getContext('2d');
+        g.setTransform(k, 0, 0, k, pad * k, pad * k);
+        for (let i = 0; i < 7; i++) {
+          const e = spread * (i / 6);
+          g.fillStyle = `rgba(0,0,0,${(a / 7).toFixed(3)})`;
+          g.fillRect(-e, -e, w + e * 2, h + e * 2);
+        }
+        this._shadows.set(key, c);
       }
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(c, x - pad + spread * 0.35, y - pad + spread * 0.25, w + pad * 2, h + pad * 2);
     }
 
     drawBoards(ctx, left, right) {
@@ -255,12 +294,15 @@
     }
 
     drawBlockEdges(ctx, side, count) {
-      // the stack of pages beneath the top page, peeking out at the fore-edge and tail
+      // the stack of pages beneath the top page, peeking out at the fore-edge and tail; only the
+      // slivers that show around the page are painted
       for (let j = count; j >= 1; j--) {
         const off = j * 1.7;
         const x = side < 0 ? -PW - off : 0;
+        const y = off * 0.55, h = PH + off * 0.3;
         ctx.fillStyle = j % 2 ? '#d9cbb0' : '#e8dcc3';
-        ctx.fillRect(x, off * 0.55, PW + off, PH + off * 0.3);
+        ctx.fillRect(side < 0 ? x : PW - 2, y, off + 2, h);
+        ctx.fillRect(x, PH - 2, PW + off, y + h - PH + 2);
       }
     }
 

@@ -65,26 +65,6 @@
     return grainCanvas;
   };
 
-  // Soft (blurred) polygon fill via the shadow trick, which works in every browser.
-  Ink.blurFill = function (g, poly, blurPx, style, scale) {
-    const OFF = 20000;
-    g.save();
-    g.shadowColor = style;
-    g.shadowBlur = blurPx;
-    g.shadowOffsetX = OFF;
-    g.shadowOffsetY = 0;
-    g.fillStyle = '#000';
-    g.beginPath();
-    for (let i = 0; i < poly.length; i++) {
-      const x = poly[i][0] - OFF / scale, y = poly[i][1];
-      if (i === 0) g.moveTo(x, y);
-      else g.lineTo(x, y);
-    }
-    g.closePath();
-    g.fill();
-    g.restore();
-  };
-
   // ---------------------------------------------------------------- strokes
   class Stroke {
     // pts: dense polyline [[x,y],...]; o: {w, tIn, tOut, press, nib, color, alpha, blend, seed, q}
@@ -165,6 +145,40 @@
       if (this.blend) ctx.globalCompositeOperation = 'source-over';
     }
 
+    // Add the centre line from fraction a to b to the current path (for batched drawing).
+    trace(ctx, a, b) {
+      if (b <= a || this.n < 2) return;
+      const L = this.L, sa = a * L, sb = b * L;
+      const x = this.x, y = this.y, s = this.s;
+      let started = false;
+      for (let i = 0; i < this.n - 1; i++) {
+        const s0 = s[i], s1 = s[i + 1];
+        if (s1 < sa) continue;
+        if (s0 > sb) break;
+        const d = s1 - s0 || 1e-6;
+        if (!started) {
+          const t = s0 < sa ? (sa - s0) / d : 0;
+          ctx.moveTo(x[i] + (x[i + 1] - x[i]) * t, y[i] + (y[i + 1] - y[i]) * t);
+          started = true;
+        }
+        if (s1 > sb) {
+          const t = (sb - s0) / d;
+          ctx.lineTo(x[i] + (x[i + 1] - x[i]) * t, y[i] + (y[i + 1] - y[i]) * t);
+          break;
+        }
+        ctx.lineTo(x[i + 1], y[i + 1]);
+      }
+    }
+    // Mean width along the stroke.
+    meanW() {
+      if (this._mw === undefined) {
+        let t = 0;
+        for (let i = 0; i < this.n; i++) t += this.w[i];
+        this._mw = t / Math.max(1, this.n);
+      }
+      return this._mw;
+    }
+
     // Where the pen is at fraction u.
     tip(u) {
       const target = U.sat(u) * this.L;
@@ -199,6 +213,44 @@
     const d = U.densify(pts, o.step || 2);
     return new Stroke(o.wob === 0 ? d : U.wobble(d, o.wob === undefined ? 0.35 : o.wob, o.wf || 0.02, o.seed || 0), Object.assign({ tIn: 0, tOut: 0, press: 0.05 }, o));
   };
+  // Draw many strokes as a few paths, one per colour and rounded width, instead of one path per
+  // change of nib width. items: [[stroke, a, b], ...] (fractions); k scales the width.
+  const batchGroups = new Map();
+  Ink.drawBatched = function (ctx, items, k, blend) {
+    k = k || 1;
+    batchGroups.clear();
+    for (const it of items) {
+      const st = it[0];
+      if (it[2] <= it[1]) continue;
+      if (st._bk === undefined || st._bkK !== k) {
+        const wq = Math.max(0.2, Math.round((st.meanW() * k) / 0.25) * 0.25);
+        const aq = Math.max(0.02, Math.round(st.alpha / 0.04) * 0.04);
+        st._bk = U.rgba(st.color, aq.toFixed(2)) + '|' + wq;
+        st._bkK = k;
+      }
+      let g = batchGroups.get(st._bk);
+      if (!g) batchGroups.set(st._bk, (g = []));
+      g.push(it);
+    }
+    if (blend) ctx.globalCompositeOperation = blend;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (const [key, g] of batchGroups) {
+      const bar = key.indexOf('|');
+      ctx.strokeStyle = key.slice(0, bar);
+      ctx.lineWidth = +key.slice(bar + 1);
+      ctx.beginPath();
+      for (const it of g) it[0].trace(ctx, it[1], it[2]);
+      ctx.stroke();
+    }
+    if (blend) ctx.globalCompositeOperation = 'source-over';
+    batchGroups.clear();
+  };
+  // Whole strokes, batched: for text that is only glimpsed.
+  Ink.fastStrokes = function (ctx, strokes, k) {
+    Ink.drawBatched(ctx, strokes.map((st) => [st, 0, 1]), k);
+  };
+
   Ink.line = function (x0, y0, x1, y1, o) {
     o = o || {};
     const n = Math.max(2, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 2));
@@ -233,6 +285,7 @@
       this.mode = o.mode || 'seq';
       this.ease = o.ease || identity;
       this.blend = o.blend || null;
+      this.batch = !!o.batch; // draw as a few merged paths (coloured pencil)
       const n = this.strokes.length;
       this.win = new Float32Array(n * 2);
       if (this.mode === 'par') {
@@ -261,6 +314,15 @@
     }
     draw(ctx, u) {
       u = this.ease(U.sat(u));
+      if (this.batch) {
+        const items = [];
+        for (let i = 0; i < this.strokes.length; i++) {
+          const a = this.win[i * 2], b = this.win[i * 2 + 1];
+          if (u > a) items.push([this.strokes[i], 0, u >= b ? 1 : (u - a) / (b - a)]);
+        }
+        Ink.drawBatched(ctx, items, 1, this.blend);
+        return;
+      }
       if (this.blend) ctx.globalCompositeOperation = this.blend;
       for (let i = 0; i < this.strokes.length; i++) {
         const a = this.win[i * 2], b = this.win[i * 2 + 1];
@@ -277,22 +339,51 @@
       const n = this.strokes.length;
       if (this._baked === undefined) this._baked = 0;
       if (this._baked >= n) return;
+      if (this.batch) {
+        const items = [];
+        while (this._baked < n && (u >= 1 || this.win[this._baked * 2 + 1] <= u)) items.push([this.strokes[this._baked++], 0, 1]);
+        if (items.length) Ink.drawBatched(ctx, items, 1, this.blend);
+        return;
+      }
       if (this.blend) ctx.globalCompositeOperation = this.blend;
       while (this._baked < n && (u >= 1 || this.win[this._baked * 2 + 1] <= u)) {
-        this.strokes[this._baked].draw(ctx, 0, 1);
+        this.strokes[this._baked].draw(ctx, this._part || 0, 1);
+        this._part = 0;
         this._baked++;
+      }
+      // a long stroke still under the pen is committed as it goes, so each frame only redraws
+      // its newest stretch
+      if (this.mode === 'seq' && this._baked < n) {
+        const i = this._baked, a = this.win[i * 2], b = this.win[i * 2 + 1];
+        const st = this.strokes[i], from = this._part || 0;
+        const lu = u > a ? (u - a) / (b - a) : 0;
+        if ((lu - from) * st.L > 24) {
+          st.draw(ctx, from, lu);
+          this._part = lu;
+        }
       }
       if (this.blend) ctx.globalCompositeOperation = 'source-over';
     }
     drawLive(ctx, u) {
       u = this.ease(U.sat(u));
       const n = this.strokes.length;
+      if (this.batch) {
+        const items = [];
+        for (let i = this._baked || 0; i < n; i++) {
+          const a = this.win[i * 2], b = this.win[i * 2 + 1];
+          if (u <= a) { if (this.mode !== 'par') break; continue; }
+          items.push([this.strokes[i], 0, u >= b ? 1 : (u - a) / (b - a)]);
+        }
+        if (items.length) Ink.drawBatched(ctx, items, 1, this.blend);
+        return;
+      }
       if (this.blend) ctx.globalCompositeOperation = this.blend;
-      for (let i = this._baked || 0; i < n; i++) {
+      const b0 = this._baked || 0;
+      for (let i = b0; i < n; i++) {
         const a = this.win[i * 2], b = this.win[i * 2 + 1];
         if (u <= a) { if (this.mode !== 'par') break; continue; }
         const lu = u >= b ? 1 : (u - a) / (b - a);
-        this.strokes[i].draw(ctx, 0, lu);
+        this.strokes[i].draw(ctx, i === b0 && this.mode === 'seq' ? this._part || 0 : 0, lu);
       }
       if (this.blend) ctx.globalCompositeOperation = 'source-over';
     }
@@ -323,6 +414,9 @@
     }
   }
   Ink.StrokeMark = StrokeMark;
+
+  // Normal quantiles for twelve even slices: nested fills at these offsets add up to a blur.
+  const SOFT_Z = [-1.732, -1.15, -0.812, -0.549, -0.319, -0.105, 0.105, 0.319, 0.549, 0.812, 1.15, 1.732];
 
   // Watercolour wash: layered noisy fills, darker rim, granulation, blooms from an origin.
   class WashMark extends Mark {
@@ -368,9 +462,18 @@
       }
       // pale centre — pigment migrates to the rim as the water dries
       if (this.soft > 0) {
+        // a blurred, shrunken copy of the shape lifted out of the wash, built from nested copies
+        // at the quantiles of a Gaussian instead of an actual blur, which is slow on many GPUs
         g.globalCompositeOperation = 'destination-out';
-        const shrink = this.poly.map((p) => [bb.cx + (p[0] - bb.cx) * 0.72, bb.cy + (p[1] - bb.cy) * 0.72]);
-        Ink.blurFill(g, shrink, Math.max(4, Math.min(bb.w, bb.h) * 0.22 * scale), `rgba(0,0,0,${this.soft})`, scale);
+        const R = Math.max(1, Math.min(bb.w, bb.h) / 2);
+        const sigma = Math.max(4 / scale, Math.min(bb.w, bb.h) * 0.22) / 2 / R;
+        const a = 1 - Math.pow(1 - this.soft, 1 / SOFT_Z.length);
+        g.fillStyle = `rgba(0,0,0,${a.toFixed(4)})`;
+        for (const z of SOFT_Z) {
+          const f = Math.max(0.02, 0.72 + sigma * z);
+          U.poly(g, this.poly.map((p) => [bb.cx + (p[0] - bb.cx) * f, bb.cy + (p[1] - bb.cy) * f]));
+          g.fill();
+        }
         g.globalCompositeOperation = 'source-over';
       }
       if (this.edge > 0) {
@@ -478,6 +581,29 @@
       if (x1 <= x0 || y1 <= y0) return;
       const surf = env.surface;
       if (surf && this.target) surf.erased.add(this.target);
+      if (surf && surf.bg) {
+        // copy the page as it would be without the flying words, then put back any
+        // neighbouring words inside the rectangle that have not flown yet
+        const k = surf.bg.width / 1000;
+        const px0 = Math.floor(x0 * k), py0 = Math.floor(y0 * k);
+        const pw = Math.min(surf.bg.width, Math.ceil(x1 * k)) - px0, ph = Math.min(surf.bg.height, Math.ceil(y1 * k)) - py0;
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.drawImage(surf.bg, px0, py0, pw, ph, px0 / k, py0 / k, pw / k, ph / k);
+        ctx.beginPath();
+        ctx.rect(px0 / k, py0 / k, pw / k, ph / k);
+        ctx.clip();
+        for (const m of surf.targets) {
+          if (m.t1 > this.t1 || surf.erased.has(m)) continue;
+          const b = m.bounds();
+          if (b && (b.x1 < x0 || b.x0 > x1 || b.y1 < y0 || b.y0 > y1)) continue;
+          ctx.save();
+          m.draw(ctx, 1, env);
+          ctx.restore();
+        }
+        ctx.restore();
+        return;
+      }
       ctx.save();
       ctx.beginPath();
       ctx.rect(x0, y0, x1 - x0, y1 - y0);
@@ -563,7 +689,7 @@
         }
       }
     }
-    return new StrokeMark(strokes, t0, t1, { mode: 'stagger', overlap: o.overlap || 0.05, blend: 'multiply' });
+    return new StrokeMark(strokes, t0, t1, { mode: 'stagger', overlap: o.overlap || 0.05, blend: 'multiply', batch: true });
   };
 
   // Stippled dots.

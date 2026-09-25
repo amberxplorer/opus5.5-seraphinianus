@@ -1,0 +1,15 @@
+import { chromium } from 'playwright';
+const [, , out] = process.argv;
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+page.on('pageerror', (e) => console.log('[pageerror]', e.message));
+await page.goto('http://localhost:8123/index.html');
+await page.waitForTimeout(1500);
+await page.mouse.move(200, 150);
+await page.waitForTimeout(700);
+await page.screenshot({ path: out + '/eye1.png', clip: { x: 880, y: 330, width: 240, height: 200 } });
+await page.mouse.move(1400, 880);
+await page.waitForTimeout(700);
+await page.screenshot({ path: out + '/eye2.png', clip: { x: 880, y: 330, width: 240, height: 200 } });
+console.log('begin label:', await page.textContent('#begin'), 'fullscreen button hidden:', await page.evaluate(() => document.getElementById('btn-full').hidden));
+await browser.close();

@@ -99,7 +99,8 @@
     }
     const ser = seraphStrokes(W / 2, 790, 245, new U.Rand('cover-seraph'), { w: 2.1 });
     for (const w of ser.wings) for (const s of w.strokes) gilt.push(s);
-    for (const s of ser.eye) gilt.push(s);
+    // the iris is left off the stamping: it is drawn live, and it watches the reader
+    ser.eye.forEach((s, i) => { if (i !== 2) gilt.push(s); });
     gilt.push(Ink.path(ser.S.halo, { w: 1.2, wob: 0.2, tIn: 0, tOut: 0 }));
     const title = A.display(W / 2, 318, 62, { center: true, seed: 'cover-title', weight: 0.085, word: A.lex.long(new U.Rand('codex-title'), 8) });
     for (const s of title.strokes) gilt.push(s);
@@ -116,7 +117,8 @@
     const ig = inside.getContext('2d');
     ig.drawImage(cloth, 0, 0);
     ig.drawImage(marble, 0, Math.round(BD * sc), Math.round(PW * sc), Math.round(PH * sc));
-    show.cover = { front, inside, cloth, mask, marble, sc };
+    const e = ser.S.eye;
+    show.cover = { front, inside, cloth, mask, marble, sc, eye: { x: W / 2, y: 790, r: e.ir, almond: e.almond } };
   }
 
   C.Scenes.push({
@@ -229,6 +231,45 @@
           ctx.lineWidth = 1.2;
           U.poly(ctx, low, false);
           ctx.stroke();
+        },
+      });
+
+      // the gilt iris on the closed cover follows the reader's pointer
+      show.actor({
+        t0: 0, t1: TL.cover[0] + 0.01, layer: 0.2,
+        draw(ctx, T, view) {
+          const cv = show.cover;
+          if (!cv || !cv.eye) return;
+          const ex = cv.eye.x, ey = cv.eye.y - BD;
+          let dx = Math.sin(performance.now() / 1400) * 0.5, dy = Math.cos(performance.now() / 1900) * 0.3;
+          if (C.mouse) {
+            const sp = view.toScreen(ex, ey);
+            const mx = C.mouse[0] - sp[0], my = C.mouse[1] - sp[1];
+            const d = Math.hypot(mx, my) || 1;
+            const f = Math.min(1, d / 260);
+            dx = (mx / d) * f;
+            dy = (my / d) * f;
+          }
+          const ease = C.eyeLook || (C.eyeLook = [dx, dy]);
+          ease[0] += (dx - ease[0]) * 0.12;
+          ease[1] += (dy - ease[1]) * 0.12;
+          const ix = ex + ease[0] * 9, iy = ey + ease[1] * 4.5;
+          ctx.save();
+          U.poly(ctx, cv.eye.almond.map(([x, y]) => [x, y - BD]));
+          ctx.clip();
+          const r = cv.eye.r;
+          for (const [ox, oy, col, lw] of [[1.3, 1.5, 'rgba(6,12,10,0.75)', 2], [-0.5, -0.6, 'rgba(255,238,190,0.5)', 1.6], [0, 0, '#d4b062', 1.7]]) {
+            ctx.strokeStyle = col;
+            ctx.lineWidth = lw;
+            ctx.beginPath();
+            ctx.arc(ix + ox, iy + oy, r, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = col;
+            ctx.beginPath();
+            ctx.arc(ix + ox, iy + oy, r * 0.38, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
         },
       });
 

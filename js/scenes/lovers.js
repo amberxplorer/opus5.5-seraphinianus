@@ -62,12 +62,12 @@
       const sp = show.spread([196, 197]);
       const L = sp.L, R = sp.R;
       const T0 = TL.turns[3][1], T1 = TL.turns[4][0];
-      show.turn(TL.turns[3][0], TL.turns[3][1], 3, 4);
+      show.turn(TL.turns[3][0], TL.turns[3][1], 3, 4, { riffle: 5 });
       const pre = TL.turns[3][0] - 1;
       K.furniture(L, 196, 'L', pre);
       K.furniture(R, 197, 'R', pre);
-      K.strokes(L, A.numeral(6, 500, 140, 22, { center: true, color: PAL.red, weight: 0.13 }), pre, pre);
-      K.strokes(L, A.display(500, 214, 20, { center: true, seed: 'hum-title', swash: false, weight: 0.1 }).strokes, pre, pre);
+      K.strokes(L, A.numeral(6, 500, 140, 22, { center: true, color: PAL.red, weight: 0.13 }), T0 + 0.05, T0 + 0.45, { mode: 'seq' });
+      K.strokes(L, A.display(500, 214, 20, { center: true, seed: 'hum-title', swash: false, weight: 0.1 }).strokes, T0 + 0.3, T0 + 1.15, { mode: 'seq', gap: 0.1 });
 
       // ---------------------------------------------------------- left: a head that grows a garden
       const face = U.catmull([[392, 796], [372, 690], [376, 590], [398, 520], [440, 478], [500, 458], [558, 470], [592, 520], [596, 552], [590, 566], [628, 612], [598, 626], [608, 646], [597, 655], [605, 668], [594, 700], [566, 718], [552, 740], [552, 800]], 2);

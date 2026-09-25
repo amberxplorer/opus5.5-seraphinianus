@@ -15,12 +15,13 @@ npx http-server . -p 8080
 # then visit http://localhost:8080
 ```
 
-Opening `index.html` straight from disk also works in most browsers. Sound starts when you press **Open the book**. Headphones help.
+Opening `index.html` straight from disk also works in most browsers. Sound starts when you press **Open the book**. Headphones help. While the book waits on the landing screen, the eye of the gilt seraph on its cover follows your pointer.
 
 | Key | Action |
 | --- | --- |
 | Space or K | Pause and resume |
 | M | Mute |
+| F | Full screen |
 | R | Start again |
 | ← → | Step back or forward five seconds |
 
@@ -34,7 +35,7 @@ Nothing in the piece is taken from the Codex. There are no images, no fonts for 
 - **The page numbers** count in base 21, after the numbering system in the Codex that Allan C. Wechsler and Ivan Derzhanski worked out.
 - **Ink, pencil and watercolour** (`js/core/ink.js`) are strokes with pressure and taper, hatching, coloured-pencil shading in two passes, and washes with pale centres, darker rims and granulated pigment. Marks are baked into each page as they finish, so only the pen's current stroke is redrawn each frame.
 - **The paper, the walnut desk, the book cloth and the gilt** are procedural textures (`js/core/paper.js`). The marbled endpapers use mathematical marbling: every pixel is traced back through the combs and ink drops to the drop it came from.
-- **The book** (`js/core/book.js`, `js/core/show.js`) is rendered in 2D with a perspective camera. Page turns are curling sheets drawn as lit, perspective-projected strips. Drawings that come alive are "ink sprites" that peel off the page as paper cut-outs and cast shadows under the lamp.
+- **The book** (`js/core/book.js`, `js/core/show.js`) is rendered in 2D with a perspective camera. Page turns are curling sheets drawn as lit, perspective-projected strips. At each new chapter a few leaves riffle past before the page settles, and the chapter's number and title are written in once it lands. Drawings that come alive are "ink sprites" that peel off the page as paper cut-outs and cast shadows under the lamp.
 - **The score** (`js/audio/`) is synthesized with the Web Audio API: an FM celesta, a Karplus–Strong harp, a choir of formant filters, a glass flute, a reed, bass, marimba, clockwork ticks, timpani and bells, plus foley for page turns, the pen nib, ink drops, bubbles, dice and an alligator's gulps. It is in D at 96 beats a minute in 12/8, thirty-six bars, four to a chapter. The harmony moves through the flat sixth and flat seventh before coming home. Picture and sound share one clock, so letters, gear ticks and pawn hops land on the beat.
 
 ### The chapters

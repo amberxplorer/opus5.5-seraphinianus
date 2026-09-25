@@ -51,12 +51,12 @@
       const sp = show.spread([130, 131]);
       const L = sp.L, R = sp.R;
       const T0 = TL.turns[2][1], T1 = TL.turns[3][0];
-      show.turn(TL.turns[2][0], TL.turns[2][1], 2, 3);
+      show.turn(TL.turns[2][0], TL.turns[2][1], 2, 3, { riffle: 5 });
       const pre = TL.turns[2][0] - 1;
       K.furniture(L, 130, 'L', pre);
       K.furniture(R, 131, 'R', pre);
-      K.strokes(L, A.numeral(4, 500, 140, 22, { center: true, color: PAL.red, weight: 0.13 }), pre, pre);
-      K.strokes(L, A.display(500, 214, 20, { center: true, seed: 'phys-title', swash: false, weight: 0.1 }).strokes, pre, pre);
+      K.strokes(L, A.numeral(4, 500, 140, 22, { center: true, color: PAL.red, weight: 0.13 }), T0 + 0.05, T0 + 0.45, { mode: 'seq' });
+      K.strokes(L, A.display(500, 214, 20, { center: true, seed: 'phys-title', swash: false, weight: 0.1 }).strokes, T0 + 0.3, T0 + 1.15, { mode: 'seq', gap: 0.1 });
 
       // ---------------------------------------------------------- harmonograph
       const hc = [500, 585];

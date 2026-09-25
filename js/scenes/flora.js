@@ -54,15 +54,15 @@
       const L = sp.L, Rp = sp.R;
       const T0 = TL.turns[0][1];
       const T1 = TL.turns[1][0];
-      show.turn(TL.turns[0][0], TL.turns[0][1], 0, 1);
+      show.turn(TL.turns[0][0], TL.turns[0][1], 0, 1, { riffle: 4 });
       const pre = TL.turns[0][0] - 1;
       K.furniture(L, 24, 'L', pre);
       K.furniture(Rp, 25, 'R', pre);
 
       // ---------------------------------------------------------- left page: chapter opening
-      K.strokes(L, A.numeral(1, 500, 150, 26, { center: true, color: PAL.red, weight: 0.13 }), pre, pre);
+      K.strokes(L, A.numeral(1, 500, 150, 26, { center: true, color: PAL.red, weight: 0.13 }), T0 + 0.05, T0 + 0.45, { mode: 'seq' });
       const ttl = A.display(500, 238, 24, { center: true, seed: 'flora-title', swash: false, weight: 0.1 });
-      K.strokes(L, ttl.strokes, pre, pre);
+      K.strokes(L, ttl.strokes, T0 + 0.3, T0 + 1.15, { mode: 'seq', gap: 0.1 });
       const r1 = new U.Rand('flora-text');
       const txt = K.text(L, { rand: r1, x: 96, y: 330, w: 808, size: 8, lines: 12, dropcap: { lines: 3 } }, T0 + 0.15, { pens: 4, speed: 950 });
       // specimens: seeds in little frames

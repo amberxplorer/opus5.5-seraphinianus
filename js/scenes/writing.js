@@ -13,12 +13,12 @@
       const sp = show.spread([262, 263]);
       const L = sp.L, R = sp.R;
       const T0 = TL.turns[4][1], T1 = TL.turns[5][0];
-      show.turn(TL.turns[4][0], TL.turns[4][1], 4, 5);
+      show.turn(TL.turns[4][0], TL.turns[4][1], 4, 5, { riffle: 4 });
       const pre = TL.turns[4][0] - 1;
       K.furniture(L, 262, 'L', pre);
       K.furniture(R, 263, 'R', pre);
-      K.strokes(L, A.numeral(8, 500, 140, 22, { center: true, color: PAL.red, weight: 0.13 }), pre, pre);
-      K.strokes(L, A.display(500, 214, 20, { center: true, seed: 'writ-title', swash: false, weight: 0.1 }).strokes, pre, pre);
+      K.strokes(L, A.numeral(8, 500, 140, 22, { center: true, color: PAL.red, weight: 0.13 }), T0 + 0.05, T0 + 0.45, { mode: 'seq' });
+      K.strokes(L, A.display(500, 214, 20, { center: true, seed: 'writ-title', swash: false, weight: 0.1 }).strokes, T0 + 0.3, T0 + 1.15, { mode: 'seq', gap: 0.1 });
 
       // ---------------------------------------------------------- the alphabet table
       const cols = 6, rows = 4, cw = 134, ch = 150, gx = 98, gy = 290;

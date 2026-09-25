@@ -22,12 +22,12 @@
       const sp = show.spread([318, 319]);
       const L = sp.L, R = sp.R;
       const T0 = TL.turns[5][1], T1 = TL.turns[6][0];
-      show.turn(TL.turns[5][0], TL.turns[5][1], 5, 6);
+      show.turn(TL.turns[5][0], TL.turns[5][1], 5, 6, { riffle: 4 });
       const pre = TL.turns[5][0] - 1;
       K.furniture(L, 318, 'L', pre);
       K.furniture(R, 319, 'R', pre);
-      K.strokes(L, A.numeral(10, 500, 140, 22, { center: true, color: PAL.red, weight: 0.13 }), pre, pre);
-      K.strokes(L, A.display(500, 214, 20, { center: true, seed: 'game-title', swash: false, weight: 0.1 }).strokes, pre, pre);
+      K.strokes(L, A.numeral(10, 500, 140, 22, { center: true, color: PAL.red, weight: 0.13 }), T0 + 0.05, T0 + 0.45, { mode: 'seq' });
+      K.strokes(L, A.display(500, 214, 20, { center: true, seed: 'game-title', swash: false, weight: 0.1 }).strokes, T0 + 0.3, T0 + 1.15, { mode: 'seq', gap: 0.1 });
 
       // ---------------------------------------------------------- the goose game: 63 squares on a spiral
       const c = [500, 700];

@@ -75,7 +75,22 @@
   UI.init = function (s) {
     show = s;
     C.landing = true;
-    $('begin').addEventListener('click', begin);
+    const bb = $('begin');
+    bb.disabled = false;
+    bb.textContent = 'Open the book';
+    bb.addEventListener('click', begin);
+    window.addEventListener('pointermove', (e) => { C.mouse = [e.clientX, e.clientY]; }, { passive: true });
+    const fsb = $('btn-full');
+    const root = document.documentElement;
+    if (document.fullscreenEnabled && root.requestFullscreen) {
+      fsb.hidden = false;
+      fsb.addEventListener('click', () => {
+        const p = document.fullscreenElement ? document.exitFullscreen() : root.requestFullscreen();
+        if (p && p.catch) p.catch(() => { fsb.hidden = true; });
+        poke();
+      });
+      document.addEventListener('fullscreenchange', () => fsb.setAttribute('aria-label', document.fullscreenElement ? 'Leave full screen' : 'Full screen'));
+    }
     for (const id of ['about-open', 'btn-about', 'about-end']) $(id).addEventListener('click', openAbout);
     $('about-close').addEventListener('click', closeAbout);
     $('about').addEventListener('click', (e) => { if (e.target === $('about')) closeAbout(); });
@@ -140,6 +155,7 @@
       }
       if (e.key === ' ' || e.key === 'k') { e.preventDefault(); C.App.toggle(); poke(); }
       else if (e.key === 'm') $('btn-mute').click();
+      else if (e.key === 'f' && !$('btn-full').hidden) $('btn-full').click();
       else if (e.key === 'r') { C.App.restart(); poke(); }
       else if (e.key === 'ArrowRight') C.App.seek(Math.min(show.duration, C.App.time() + 5));
       else if (e.key === 'ArrowLeft') C.App.seek(Math.max(0, C.App.time() - 5));

@@ -63,12 +63,12 @@
       const sp = show.spread([60, 61]);
       const L = sp.L, R = sp.R;
       const T0 = TL.turns[1][1], T1 = TL.turns[2][0];
-      show.turn(TL.turns[1][0], TL.turns[1][1], 1, 2);
+      show.turn(TL.turns[1][0], TL.turns[1][1], 1, 2, { riffle: 5 });
       const pre = TL.turns[1][0] - 1;
       K.furniture(L, 60, 'L', pre);
       K.furniture(R, 61, 'R', pre);
-      K.strokes(L, A.numeral(2, 500, 150, 26, { center: true, color: PAL.red, weight: 0.13 }), pre, pre);
-      K.strokes(L, A.display(500, 236, 22, { center: true, seed: 'fauna-title', swash: false, weight: 0.1 }).strokes, pre, pre);
+      K.strokes(L, A.numeral(2, 500, 150, 26, { center: true, color: PAL.red, weight: 0.13 }), T0 + 0.05, T0 + 0.45, { mode: 'seq' });
+      K.strokes(L, A.display(500, 236, 22, { center: true, seed: 'fauna-title', swash: false, weight: 0.1 }).strokes, T0 + 0.3, T0 + 1.15, { mode: 'seq', gap: 0.1 });
 
       // ---------------------------------------------------------- four specimens
       const boxes = [[96, 300], [524, 300], [96, 690], [524, 690]];

@@ -15,7 +15,7 @@
       const sp = show.spread([370, 371]);
       const L = sp.L, R = sp.R;
       const T0 = TL.turns[6][1];
-      show.turn(TL.turns[6][0], TL.turns[6][1], 6, 7);
+      show.turn(TL.turns[6][0], TL.turns[6][1], 6, 7, { riffle: 4 });
       const pre = TL.turns[6][0] - 1;
       K.furniture(L, 370, 'L', pre);
       K.furniture(R, 371, 'R', pre);
@@ -395,6 +395,18 @@
             gg.addColorStop(1, 'rgba(255,190,90,0)');
             ctx.fillStyle = gg;
             ctx.fillRect(x - r, y - r, r * 2, r * 2);
+          }
+          // their reflections tremble in the lagoon
+          for (const [x, y] of windows) {
+            const f = U.smoothstep(dusk[0] + 0.5 + ((x + 1000) % 97) / 60, dusk[0] + 1.2 + ((x + 1000) % 97) / 60, T) * d;
+            if (f <= 0 || y > HZ) continue;
+            const ry = HZ + (HZ - y) * 0.55;
+            for (let k = 0; k < 4; k++) {
+              const yy = HZ + 10 + (ry - HZ) * (0.35 + k * 0.22);
+              const w = 5 + Math.sin(T * 5 + x + k) * 3;
+              ctx.fillStyle = `rgba(255,196,110,${(0.22 * f * (1 - k * 0.2)).toFixed(3)})`;
+              ctx.fillRect(x - w + Math.sin(T * 3 + k * 2 + x) * 3, yy, w * 2, 3);
+            }
           }
           const f2 = U.smoothstep(dusk[0] + 0.8, dusk[1], T) * d;
           if (f2 > 0) {

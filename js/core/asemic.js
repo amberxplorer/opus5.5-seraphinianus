@@ -205,16 +205,18 @@
     const weight = (o.weight || 0.1) * size;
     const color = o.color || Ink.PAL.ink;
     const alpha = o.alpha === undefined ? 1 : o.alpha;
+    // width steps of the nib: about half a pixel at reading size, which halves the draw calls
+    const wq = Math.max(0.15, Math.min(0.35, weight * 0.4));
     let pts = U.catmull(A.place(sk.pts, x, y, size, slant, o.rot), step);
     if (o.bend) pts = pts.map(o.bend);
     const main = new Ink.Stroke(pts, {
       w: weight, nib: o.nib === undefined ? 0.5 : o.nib, tIn: size * 0.35, tOut: size * 0.5,
-      press: 0.12, color, alpha, seed: rand.range(0, 99), q: Math.max(0.12, weight * 0.18),
+      press: 0.12, color, alpha, seed: rand.range(0, 99), q: wq,
     });
     const extras = sk.dias.map((d) => {
       let dp = U.catmull(A.place(d, x, y, size, slant, o.rot), step * 0.8);
       if (o.bend) dp = dp.map(o.bend);
-      return new Ink.Stroke(dp, { w: weight * 0.95, tIn: size * 0.08, tOut: size * 0.1, press: 0.05, color, alpha, q: Math.max(0.12, weight * 0.18) });
+      return new Ink.Stroke(dp, { w: weight * 0.95, tIn: size * 0.08, tOut: size * 0.1, press: 0.05, color, alpha, q: wq });
     });
     return { strokes: [main].concat(extras), adv: sk.adv * size, main };
   };

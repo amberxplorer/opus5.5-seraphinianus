@@ -81,17 +81,26 @@
       this.scale = wpx / PW;
       this.base = page.base ? page.base(wpx) : B.paperFor(page.paperSeed, wpx);
       this.env = { texScale: this.scale, paper: this.base, surface: this };
+      // Pages whose words will fly off keep a second copy without those words, so erasing one
+      // is a single copy from it instead of repainting everything underneath.
+      this.targets = null;
+      for (const m of page.marks) if (m.erase && m.target) (this.targets || (this.targets = new Set())).add(m.target);
+      if (this.targets) {
+        this.bg = U.canvas(this.wpx, this.hpx);
+        this.bgc = this.bg.getContext('2d');
+      }
       this.reset();
     }
     reset() {
       this.baked = [];
       this.erased = new Set();
-      for (const m of this.page.marks) if (m._baked !== undefined) m._baked = 0;
-      const g = this.ctx;
-      g.setTransform(1, 0, 0, 1, 0, 0);
-      g.globalCompositeOperation = 'source-over';
-      g.globalAlpha = 1;
-      g.drawImage(this.base, 0, 0, this.wpx, this.hpx);
+      for (const m of this.page.marks) if (m._baked !== undefined) { m._baked = 0; m._part = 0; }
+      for (const g of this.bg ? [this.ctx, this.bgc] : [this.ctx]) {
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        g.globalCompositeOperation = 'source-over';
+        g.globalAlpha = 1;
+        g.drawImage(this.base, 0, 0, this.wpx, this.hpx);
+      }
       this.idx = 0;
       this.T = -Infinity;
     }
@@ -109,6 +118,13 @@
         if (m.bakeTo) m.bakeTo(g, 1);
         else m.draw(g, 1, this.env);
         g.restore();
+        if (this.bg && !m.erase && !this.targets.has(m)) {
+          const b = this.bgc;
+          b.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+          b.save();
+          m.draw(b, 1, this.env);
+          b.restore();
+        }
         if (!m.erase) this.baked.push(m);
         this.idx++;
         if (budget && performance.now() - start > budget) {
@@ -143,6 +159,7 @@
     release() {
       B.give(this.canvas);
       this.canvas = null;
+      this.bg = this.bgc = null;
     }
   }
   B.Surface = Surface;
@@ -180,7 +197,7 @@
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.idx = 0;
         this.cut = null;
-        for (const m of this.page.marks) if (m._baked !== undefined) m._baked = 0;
+        for (const m of this.page.marks) if (m._baked !== undefined) { m._baked = 0; m._part = 0; }
       }
       this.page.sort();
       const marks = this.page.marks;

@@ -68,7 +68,7 @@ js/ui.js, js/main.js  interface and render loop
 tools/                development helpers (headless screenshots, offline audio render, profiling)
 ```
 
-The `tools/` scripts expect Playwright and a local server on port 8123, for example `npx http-server . -p 8123`. `node tools/frames.mjs out 1600 900 "10,20,30"` renders moments of the piece; `node tools/render-audio.mjs score.wav` renders the whole score offline.
+The `tools/` scripts expect Playwright and a local server on port 8123, for example `npx http-server . -p 8123`. `node tools/frames.mjs out 1600 900 "10,20,30"` renders moments of the piece; `node tools/render-audio.mjs score.wav` renders the whole score offline. For performance, `node tools/drawcalls.mjs` counts canvas draw calls per frame (listing separately the kinds that are slow on a GPU: blend modes that read the screen back, and blurs), and `node tools/bench.mjs 960 540 "22-25,80-83"` times frames with a hardware-accelerated canvas.
 
 ## Credits
 

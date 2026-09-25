@@ -242,6 +242,7 @@
       }
       fm.push(Ink.hatch(G.bellyPoly.slice(Math.floor(G.bellyPoly.length * 0.35)), f0 + 2.9, f0 + 3.5, { spacing: 3.2, w: 0.45, angle: 0.5 }));
       const sprite = new B.InkSprite({ x0: ox - 20, y0: oy - 240, x1: ox + 720, y1: oy + 190 }, fm, { outline: G.all });
+      show.warm(f0 + 2.5, fm);
 
       // specimen annotations that will outlive the fish
       const notes = [[G.eye[0], G.eye[1] - 24, 120, 330], [ox + 300, oy - 210, 430, 300], [ox + 670, oy - 150, 800, 300], [ox + 170, oy + 105, 250, 900], [ox + 450, oy + 150, 640, 900]];

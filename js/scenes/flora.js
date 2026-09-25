@@ -253,6 +253,7 @@
         stem: [T0 + 0.7, T0 + 2.0], leaves: T0 + 1.6, petals: [T0 + 2.6, T0 + 3.5], eye: [T0 + 3.4, T0 + 4.0],
         wash: T0 + 3.6, roots: [T0 + 1.0, T0 + 2.2], uproot: T0 + 5.1, walk: 16.25,
       };
+      show.warm(G.wash, [wash.stem].concat(wash.leaves, wash.petals, wash.inner));
       const envFor = (sh) => { const s = sh.surf(R); return s ? s.env : { texScale: Ink.texScale || 1.2 }; };
 
       // pose of the plant: base position, height lift and sway
@@ -272,11 +273,16 @@
       };
       const blinkAt = (T) => Math.max(U.bump((T - (G.eye[1] + 0.45)) / 0.25), U.bump((T - (G.uproot - 0.25)) / 0.22), U.bump((T - (G.walk + 1.2)) / 0.2));
 
-      const drawPlant = (ctx, T, sh, full) => {
+      // only: 'body' draws everything but the eye, 'eye' only the eye
+      const drawPlant = (ctx, T, sh, full, only) => {
         const env = envFor(sh);
         const g = (a, b) => (full ? 1 : U.sat((T - a) / (b - a)));
         // washes first (under the ink)
         const wT = full ? 1 : U.sat((T - G.wash) / 1.2);
+        if (only !== 'eye') drawBody(ctx, T, env, g, wT);
+        if (only !== 'body') drawEye(ctx, T, g);
+      };
+      const drawBody = (ctx, T, env, g, wT) => {
         if (wT > 0) {
           wash.stem.draw(ctx, wT, env);
           wash.leaves.forEach((w, i) => w.draw(ctx, U.sat(wT * 1.3 - i * 0.1), env));
@@ -301,7 +307,8 @@
           const a = G.petals[0] + 0.5 + i * 0.05;
           drawPart(ctx, p.o, g(a, a + 0.35));
         });
-        // the eye
+      };
+      const drawEye = (ctx, T, g) => {
         const eu = g(G.eye[0], G.eye[1]);
         if (eu > 0) {
           const open = 1 - blinkAt(T) * 1.9;
@@ -391,6 +398,31 @@
       K.hatch(R, hole.concat([[bx - 50, gy + 2]]), G.uproot + 0.5, G.uproot + 0.9, { spacing: 3.2, w: 0.5, angle: 0.9 });
       K.label(R, bx, gy + 76, 6, 2, G.uproot + 0.9, G.uproot + 1.3, { center: true, seed: 'empty' });
 
+      // Once grown, the body of the plant no longer changes: it is painted once into its own
+      // canvas and that picture walks, with only the roots and the eye drawn fresh each frame.
+      const bodyBox = (() => {
+        const polys = [ef.stem, ef.stem2, wash.stem.poly].concat(ef.leaves.map((l) => l.outline), ef.petals.map((p) => p.outline), ef.inner.map((p) => p.outline), ef.sepals.map((p) => p.outline));
+        const b = U.bbox([].concat(...polys));
+        return { x0: b.x0 - 16, y0: b.y0 - 16, x1: b.x1 + 16, y1: b.y1 + 16 };
+      })();
+      let bodyCache = null;
+      const drawBodyCached = (ctx, T, view, sh) => {
+        if (!bodyCache) {
+          const sc = U.clamp(view.pxPerUnit * 1.25, 1.5, 3);
+          const bw = bodyBox.x1 - bodyBox.x0, bh = bodyBox.y1 - bodyBox.y0;
+          const c = U.canvas(Math.ceil(bw * sc), Math.ceil(bh * sc));
+          const g = c.getContext('2d');
+          g.setTransform(sc, 0, 0, sc, -bodyBox.x0 * sc, -bodyBox.y0 * sc);
+          drawPlant(g, T, sh, true, 'body');
+          bodyCache = c;
+        }
+        ctx.save();
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.drawImage(bodyCache, bodyBox.x0, bodyBox.y0, bodyBox.x1 - bodyBox.x0, bodyBox.y1 - bodyBox.y0);
+        ctx.restore();
+        drawPlant(ctx, T, sh, false, 'eye');
+      };
+
       // walking (lifted, layer 1)
       show.actor({
         t0: G.uproot, t1: T1 + 0.3, layer: 1,
@@ -399,7 +431,7 @@
           view.lift(ctx, P.x, P.y, P.lift);
           ctx.rotate(P.sway);
           drawRoots(ctx, T, P);
-          drawPlant(ctx, T, sh, false);
+          drawBodyCached(ctx, T, view, sh);
         },
         shadow(ctx, T) {
           const P = pose(T);

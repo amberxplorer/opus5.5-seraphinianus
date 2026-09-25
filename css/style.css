@@ -171,7 +171,7 @@ button { font: inherit; color: inherit; }
 }
 #progress .track { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: rgba(241, 228, 198, 0.12); transition: height 0.2s ease; }
 #progress:hover .track, #progress:focus-visible .track { height: 5px; }
-#progress .fill { height: 100%; width: 0; background: var(--gilt); }
+#progress .fill { height: 100%; width: 100%; background: var(--gilt); transform: scaleX(0); transform-origin: 0 50%; }
 #progress .ticks { position: absolute; left: 0; right: 0; bottom: 0; height: 9px; }
 #progress .ticks i { position: absolute; bottom: 0; width: 1px; height: 7px; background: rgba(207, 169, 94, 0.55); }
 #progress:focus-visible { outline: none; }

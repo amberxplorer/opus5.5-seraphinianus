@@ -24,6 +24,7 @@
   let resumeAfterAbout = false;
   let muted = false;
   let lastFocus = null;
+  const last = { fill: '', sec: -1, clock: '', playing: null };
   const fmt = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
   function setIdle(on) {
@@ -182,16 +183,25 @@
       } else el.classList.remove('on');
       lastCap = cap;
     }
-    // transport
+    // transport: touch the page only when something visible changes
     const f = Math.min(1, T / show.duration);
     const pr = $('progress');
-    pr.querySelector('.fill').style.width = `${(f * 100).toFixed(2)}%`;
-    pr.setAttribute('aria-valuenow', String(Math.round(T)));
-    pr.setAttribute('aria-valuetext', `${Math.round(T)} seconds`);
-    $('clock').textContent = fmt(T);
-    const pb = $('btn-play');
-    pb.classList.toggle('paused', !playing);
-    pb.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+    const fw = f.toFixed(4);
+    if (fw !== last.fill) { pr.querySelector('.fill').style.transform = `scaleX(${fw})`; last.fill = fw; }
+    const sec = Math.round(T);
+    if (sec !== last.sec) {
+      pr.setAttribute('aria-valuenow', String(sec));
+      pr.setAttribute('aria-valuetext', `${sec} seconds`);
+      last.sec = sec;
+    }
+    const clk = fmt(T);
+    if (clk !== last.clock) { $('clock').textContent = clk; last.clock = clk; }
+    if (playing !== last.playing) {
+      const pb = $('btn-play');
+      pb.classList.toggle('paused', !playing);
+      pb.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+      last.playing = playing;
+    }
     // end card
     const end = $('endcard');
     const showEnd = started && T >= 88.2;

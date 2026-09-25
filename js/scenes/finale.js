@@ -33,7 +33,7 @@
         }
         return {
           s, pts, hx, hy, ang0: Math.atan2(hy - center[1], hx - center[0]), r0: d,
-          R: rr.range(180, 820), om: rr.range(0.55, 1.15), zH: rr.range(160, 700), ph: rr.range(0, TAU),
+          R: rr.range(240, 1080), om: rr.range(0.5, 1.05), zH: rr.range(380, 1500), ph: rr.range(0, TAU),
           wd: Math.max(0.8, w.size * 0.12), gi: i,
         };
       });
@@ -102,9 +102,11 @@
               ctx.save();
               view.lift(ctx, v.x, v.y, v.z);
               ctx.rotate(v.rot);
-              const glow = U.smoothstep(83.5, 86, T);
-              ctx.strokeStyle = glow > 0 ? U.rgba(U.mixc(PAL.ink, [250, 232, 190], glow), 0.95) : U.rgba(PAL.ink, 0.95);
-              ctx.lineWidth = f.wd;
+              // ink on the page, then lamplit gold once it is in the air
+              const glow = U.smoothstep(f.s + 0.5, f.s + 2.0, T);
+              ctx.strokeStyle = glow > 0 ? U.rgba(U.mixc(PAL.ink, [252, 226, 170], glow), 0.95) : U.rgba(PAL.ink, 0.95);
+              ctx.lineWidth = f.wd * (1 + glow * 0.4);
+              if (glow > 0.3) { ctx.shadowColor = `rgba(255,200,120,${(0.5 * glow).toFixed(2)})`; ctx.shadowBlur = 6 * view.dpr; }
               drawWord(ctx, f, 2 * a, T);
               ctx.restore();
               continue;
@@ -177,7 +179,7 @@
       show.cam(80.0, [-1160, -160, 2320, 1720], { n: [-1040, -80, 1080, 1580] });
       show.cam(82.6, [-1400, -420, 2800, 2100], { n: [-900, -400, 1400, 2100] });
       show.cam(85.4, [-760, -620, 2540, 2200], { n: [-300, -500, 1600, 2300] });
-      show.cam(89.5, [-560, -520, 2140, 1900], { n: [-250, -450, 1500, 2150] });
+      show.cam(89.5, [-693, -1020, 2400, 3600], { n: [-393, -760, 1800, 3000] });
       show.caption(80.6, 84.2, 'Coda', 'the words fly off the page, and the book closes');
     },
   });

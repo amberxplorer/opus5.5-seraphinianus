@@ -1,0 +1,26 @@
+// Live UI check: start, jump near the end, capture the end card, then open the notes.
+import { chromium } from 'playwright';
+import fs from 'fs';
+const [, , outdir, w = '1440', h = '900'] = process.argv;
+fs.mkdirSync(outdir, { recursive: true });
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--autoplay-policy=no-user-gesture-required'] });
+const page = await browser.newPage({ viewport: { width: +w, height: +h } });
+const logs = [];
+page.on('console', (m) => { if (!/ERR_CERT|404/.test(m.text())) logs.push(`[${m.type()}] ${m.text()}`); });
+page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`));
+await page.goto('http://localhost:8123/index.html');
+await page.waitForTimeout(1500);
+await page.click('#begin');
+await page.waitForTimeout(1500);
+await page.evaluate(() => Codex.App.seek(87.6));
+await page.waitForTimeout(2600);
+await page.screenshot({ path: `${outdir}/end.png` });
+console.log('T', await page.evaluate(() => Codex.App.time().toFixed(2)), 'endcard hidden?', await page.evaluate(() => document.getElementById('endcard').hidden));
+await page.click('#about-end');
+await page.waitForTimeout(400);
+await page.screenshot({ path: `${outdir}/about.png` });
+await page.keyboard.press('Escape');
+await page.waitForTimeout(300);
+console.log('about hidden after Esc?', await page.evaluate(() => document.getElementById('about').hidden));
+for (const l of logs) console.log(l);
+await browser.close();

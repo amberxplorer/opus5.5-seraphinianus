@@ -2,6 +2,8 @@
 
 A ninety-second audiovisual homage to Luigi Serafini's *Codex Seraphinianus* (1981), made for Amber.
 
+**[▶ Play it in your browser](https://amberxplorer.github.io/opus5.5-seraphianus/)**
+
 A closed book lies on a desk at night. It opens, and for a minute and a half it writes, draws and sings itself through the chapters of an encyclopedia of an imagined world: plants that walk away, a fish that swims out of its own description, a clockwork scribe, two lovers who become an alligator, an alphabet sung one note at a time, a goose game that plays itself, a lagoon city at dusk. At the end the writing lifts off the page, the book closes, and for a moment the unreadable script gathers into the only legible words in the piece.
 
 *Codicillus* is Latin for a little codex, and also the word for a postscript added to a will.

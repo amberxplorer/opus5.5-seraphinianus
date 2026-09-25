@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Codicillus Seraphinianus</title>
+<meta name="description" content="A ninety-second homage to Luigi Serafini's Codex Seraphinianus: a book that writes, draws and sings itself, generated live in the browser.">
+<meta name="theme-color" content="#0d0907">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..600&amp;family=Spectral:ital,wght@0,300;0,400;1,300;1,400&amp;display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="stage" aria-hidden="true"></canvas>
+<div id="ui">
+  <section id="landing" aria-labelledby="landing-title">
+    <div class="landing-top">
+      <p class="eyebrow">A postscript in ninety seconds</p>
+      <h1 id="landing-title" class="title">Codicillus <em>Seraphinianus</em></h1>
+      <p class="lede">An homage to Luigi Serafini’s <cite>Codex Seraphinianus</cite> (1981): an encyclopedia of an imagined world that writes, draws and sings itself.</p>
+    </div>
+    <div class="landing-bottom">
+      <div class="actions">
+        <button id="begin" class="btn primary" type="button">Open the book</button>
+        <button id="about-open" class="btn quiet" type="button">About the Codex</button>
+      </div>
+      <p class="note" id="landing-note">Sound on, headphones if you have them · 1 minute 30</p>
+    </div>
+  </section>
+
+  <div id="caption" aria-live="polite">
+    <span class="cap-title"></span>
+    <span class="cap-text"></span>
+  </div>
+
+  <div id="controls" hidden>
+    <div class="buttons">
+      <button id="btn-play" class="icon" type="button" aria-label="Pause">
+        <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.2v14H7zM13.8 5H17v14h-3.2z"/></svg>
+        <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6L19 12z"/></svg>
+      </button>
+      <button id="btn-mute" class="icon" type="button" aria-label="Mute sound">
+        <svg class="i-sound" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.6L12 5.6v12.8l-4.4-3.9H4z"/><path d="M15 9.2a4 4 0 0 1 0 5.6M17.3 7a7.2 7.2 0 0 1 0 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <svg class="i-muted" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.6L12 5.6v12.8l-4.4-3.9H4z"/><path d="M15.5 9.5l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+      <button id="btn-restart" class="icon" type="button" aria-label="Start again">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.2 8.4A7 7 0 1 1 5 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.2 4.4v4.8H10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button id="btn-about" class="icon" type="button" aria-label="About the Codex">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 10.8v5.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="7.9" r="1.1"/></svg>
+      </button>
+      <span id="clock" aria-hidden="true">0:00</span>
+    </div>
+  </div>
+  <div id="progress" role="slider" tabindex="0" aria-label="Position in the piece" aria-valuemin="0" aria-valuemax="90" aria-valuenow="0" aria-valuetext="0 seconds" hidden>
+    <div class="track"><div class="fill"></div></div>
+    <div class="ticks"></div>
+  </div>
+
+  <section id="endcard" hidden aria-labelledby="end-title">
+    <h2 id="end-title" class="sr-only">Codex Seraphinianus</h2>
+    <p class="end-credit">Luigi Serafini · <cite>Codex Seraphinianus</cite> · 1981</p>
+    <p class="end-line">Codicillus Seraphinianus, a postscript in ninety seconds. Every line and every sound was made live in your browser.</p>
+    <p class="end-dedication">for Amber</p>
+    <div class="actions">
+      <button id="again" class="btn primary" type="button">Read it again</button>
+      <button id="about-end" class="btn quiet" type="button">About the Codex</button>
+    </div>
+  </section>
+
+  <div id="about" role="dialog" aria-modal="true" aria-labelledby="about-title" hidden>
+    <div class="sheet">
+      <button id="about-close" class="icon close" type="button" aria-label="Close">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+      <p class="eyebrow">About</p>
+      <h2 id="about-title">The book nobody can read</h2>
+      <p>The <cite>Codex Seraphinianus</cite> is an encyclopedia of a world that does not exist. The Italian artist and architect Luigi Serafini, born in Rome in 1949, drew it between 1976 and 1978. Franco Maria Ricci published it in Milan in 1981, in two volumes. Page after page of plants, animals, machines, customs and cities is explained in a flowing, looping script that no one can read.</p>
+      <p>Its eleven chapters follow the order of a real encyclopedia. The first part covers the natural world: plants, animals, a kingdom of strange bipeds, physics and chemistry, and machines. The second covers people: the body, history, writing, food and dress, games, and architecture. Some of its pictures are famous: fruit that bleeds, a sapling that grows into a chair, trees that pull up their roots and migrate, and a pair of lovers in bed who turn into an alligator.</p>
+      <p>For decades readers tried to decipher the script. In 2009, speaking to the Oxford University Society of Bibliophiles, Serafini said there is no meaning hidden in it. He compared writing it to automatic writing, and said he wanted readers to feel what children feel in front of books they cannot yet understand, while seeing that the writing makes sense to adults. Only the page numbers give way to analysis: Allan C. Wechsler and Ivan Derzhanski each worked out that they count in a variation of base 21.</p>
+
+      <h3>About this homage</h3>
+      <p><em>Codicillus</em> is Latin for a little codex, and it is also the word for a postscript added to a will. This is a ninety-second postscript to Serafini’s book. Nothing in it is taken from the Codex. Every drawing and every sound is original and is generated in code, live, each time the book opens.</p>
+      <ul class="facts">
+        <li>The script is invented: twenty-four looping letters, six capitals and a lexicon of words that recur as often as words in a real language do. None of them means anything.</li>
+        <li>The page numbers count in base 21, in honour of the Codex’s own.</li>
+        <li>The endpapers are Italian marbling, computed by tracing every pixel back through the comb and the drops of ink.</li>
+        <li>The score is in D, at 96 beats a minute in a rocking 12/8. It is played by a synthesized celesta, a plucked harp, a choir of vowel filters, a glass flute and a clockwork percussion section. The page turns, the pen nib and the alligator’s gulps are synthesized too.</li>
+      </ul>
+
+      <h3>The chapters</h3>
+      <ol class="chapters" id="chapter-list"></ol>
+
+      <p class="credit">Made by Claude, for Amber, 2026. Read more about the <cite>Codex Seraphinianus</cite> <a href="https://en.wikipedia.org/wiki/Codex_Seraphinianus" target="_blank" rel="noopener">on Wikipedia</a>.</p>
+    </div>
+  </div>
+</div>
+<noscript><p class="noscript">This homage is drawn and scored live with JavaScript. Please enable it to open the book.</p></noscript>
+<script src="js/core/util.js"></script>
+<script src="js/core/ink.js"></script>
+<script src="js/core/paper.js"></script>
+<script src="js/core/asemic.js"></script>
+<script src="js/core/book.js"></script>
+<script src="js/core/draw.js"></script>
+<script src="js/core/show.js"></script>
+<script src="js/scenes/overture.js"></script>
+<script src="js/scenes/flora.js"></script>
+<script src="js/scenes/fauna.js"></script>
+<script src="js/scenes/physics.js"></script>
+<script src="js/scenes/lovers.js"></script>
+<script src="js/scenes/writing.js"></script>
+<script src="js/scenes/customs.js"></script>
+<script src="js/scenes/architecture.js"></script>
+<script src="js/scenes/finale.js"></script>
+<script src="js/audio/engine.js"></script>
+<script src="js/audio/score.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
